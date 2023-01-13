@@ -1,1 +1,88 @@
+/* FSDA 2.0 ASSIGNMENT 1
 
+1.Load the given dataset into snowflake with a primary key to Order ID column.
+  https://drive.google.com/drive/folders/1YktkyxlphjA1TmIO2GUXL9elUf1s4sfn */
+
+CREATE or replace TABLE "DEMO_DATABASE"."PUBLIC"."GE_SALES_DATA" 
+(
+  "ORDER_ID" varchar(50), 
+  "ORDER_DATE" varchar(50) PRIMARY KEY, 
+  "SHIP_DATE" varchar(50), 
+  "SHIP_MODE" varchar(50), 
+  "CUSTOMER_NAME" varchar(100), 
+  "SEGMENT" varchar(50), 
+  "STATE" varchar(100), 
+  "COUNTRY" varchar(100), 
+  "MARKET" varchar(100), 
+  "REGION" varchar(100), 
+  "PRODUCT_ID" varchar(100), 
+  "CATEGORY" varchar(100), 
+  "SUB_CATEGORY" varchar(100), 
+  "PRODUCT_NAME" varchar(500), 
+  "SALES" number, 
+  "QUANTITY" INTEGER, 
+  "DISCOUNT" NUMBER (10,10), 
+  "PROFIT" float, 
+  "SHIPPING_COST" float, 
+  "ORDER_PRIORITY" VARCHAR (50), 
+  "YEAR" INTEGER
+);
+
+describe table GE_SALES_DATA;
+select * from GE_SALES_DATA;
+
+-- 2. Change the Primary key to Order Id Column.
+
+create or replace table GE_SALES_DATA_COPY like GE_SALES_DATA;
+describe table GE_SALES_DATA_COPY;
+alter table GE_SALES_DATA_COPY drop primary key;
+alter table GE_SALES_DATA_COPY add primary key(ORDER_ID); 
+describe table GE_SALES_DATA_COPY;
+select * from GE_SALES_DATA_COPY;
+
+/* 3.Check the data type for Order date and Ship date and mention in what data type it should be?
+Since the columns ORDER_DATE and SHIP_DATE contains date as data, the data type of the columns should be 'DATE'.
+Inorder to upload the dataset to snowflake successfully, the dates in these columns must be cleaned and converted to snowflake supported date format 'YYYY-MM-DD'.
+Initially, clean the dataset and change the dates to mm-dd-yyyy by replacing the '/' with '-' in the dates.Then perform the following queries.*/
+
+update GE_SALES_DATA_COPY set ORDER_DATE=to_date(ORDER_DATE,'mm-dd-yyyy');
+update GE_SALES_DATA_COPY set SHIP_DATE=to_date(SHIP_DATE,'mm-dd-yyyy');
+select * from GE_SALES_DATA_COPY;
+
+-- 4.Create a new column called order_extract and extract the number after the last ‘–‘from Order ID column.
+
+alter table GE_SALES_DATA_COPY add column ORDER_EXTRACT int;
+update GE_SALES_DATA_COPY set ORDER_EXTRACT=substr(ORDER_ID,9);
+select ORDER_ID,ORDER_EXTRACT from GE_SALES_DATA_COPY;
+
+-- 5.Create a new column called Discount Flag and categorize it based on discount.Use ‘Yes’ if the discount is greater than zero else ‘No’.
+alter table GE_SALES_DATA_COPY add column DISCOUNT_FLAG varchar(10);
+update GE_SALES_DATA_COPY set DISCOUNT_FLAG =
+    case
+        when DISCOUNT > 0 then 'Yes'
+        else 'No'
+    end;
+select DISCOUNT,DISCOUNT_FLAG from GE_SALES_DATA_COPY;
+
+-- 6.Create a new column called process days and calculate how many days it takes for each order id to process from the order to its shipment.
+alter table GE_SALES_DATA_COPY add column PROCESS_DAYS int;
+update GE_SALES_DATA_COPY set PROCESS_DAYS=datediff('day',ORDER_DATE,SHIP_DATE);
+select ORDER_DATE,SHIP_DATE,PROCESS_DAYS from GE_SALES_DATA_COPY;
+
+/* 7.Create a new column called Rating and then based on the Process dates give rating like given below.
+a. If process days less than or equal to 3days then rating should be 5
+b. If process days are greater than 3 and less than or equal to 6 then rating
+should be 4
+c. If process days are greater than 6 and less than or equal to 10 then rating
+should be 3
+d. If process days are greater than 10 then the rating should be 2.*/
+
+alter table GE_SALES_DATA_COPY add column RATING int;
+update GE_SALES_DATA_COPY set RATING =  
+    case
+        when PROCESS_DAYS <= 3 then '5'
+        when PROCESS_DAYS > 3 and PROCESS_DAYS <= 6 then '4'
+        when PROCESS_DAYS > 6 and PROCESS_DAYS <= 10 then '3'
+        else '2'
+    end;
+select ORDER_ID,ORDER_DATE,SHIP_DATE,PROCESS_DAYS,RATING from GE_SALES_DATA_COPY; 
