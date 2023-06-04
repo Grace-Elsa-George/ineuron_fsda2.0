@@ -1,0 +1,179 @@
+--FSDA ASSIGNMENT 1
+
+--Task 1
+
+use database test_database;
+
+-- shopping_history table creation
+
+create or replace table shopping_history
+(
+ product varchar not null,
+ quantity integer not null,
+ unit_price integer not null
+);
+
+insert into shopping_history values
+    ('milk',3,30),
+    ('bread',4,15),
+    ('biscuit',2,20),
+    ('chocolate',1,50),
+    ('rice',10,40),
+    ('wheat',3,45),
+    ('coconut oil',1,35),
+    ('chilli powder',1,20),
+    ('tomato',1,20),
+    ('coconut',5,15);
+ 
+ select * from shopping_history; 
+ 
+ -- Result: Total price for each item by multiplying quantity with unit price.
+
+select product,(quantity * unit_price) as total_price from shopping_history;
+ 
+ 
+ -- TASK 2
+ 
+ -- Phones table creation 
+ 
+ create or replace table phones(
+    name varchar(20) not null unique,
+    phone_number integer not null unique
+ );
+ 
+ insert into phones values
+	('Jack',1234),
+    ('Adam',2345),
+    ('Ben',3456),
+    ('Catherine',4567),
+    ('Anna',5678),
+    ('Don',6789),
+    ('Anu',7890),
+    ('Paul',8901),
+    ('Maria',4321),
+    ('George',6543);
+    
+ select * from phones;
+
+--Calls table creation
+
+ create or replace table calls(
+    id integer not null,
+    caller integer not null,
+    callee integer not null,
+    duration integer not null,
+    unique(id)
+ );
+
+insert into calls values
+	(1,5678,3456,10),
+    (3,4567,6543,5),
+    (2,1234,2345,6),
+    (7,4567,2345,8),
+    (5,4321,5678,3),
+    (9,4321,8901,4),
+    (10,7890,4321,6),
+    (4,6789,2345,10),
+    (6,3456,4321,1),
+    (8,8901,7890,2);
+    
+select * from calls;
+
+--summing up duration of calls done by same caller by sum() function and using inner join between calls and phones table based on the phone number.
+
+create or replace table caller as 
+    select phones.name as name,caller,sum(duration) as caller_duration
+    from calls join phones 
+    on phones.phone_number=calls.caller
+    group by phones.name,caller;
+
+select * from caller;
+
+--summing up duration of calls done by same callee by sum() function and using inner join between calls and phones table based on the phone number.
+
+create or replace table callee as
+    select phones.name as name1,callee,sum(duration) as callee_duration
+    from calls join phones 
+    on phones.phone_number=calls.callee
+    group by phones.name,callee;
+
+select * from callee;
+
+--Joining the above two tables to get the summary table with total call duration covered by each person using simple addition and full outer join between caller and callee tables.
+
+create or replace table total_call_duration as
+    select 
+        case when name is null then name1 else name end as name,
+        case 
+             when caller_duration is null and callee_duration is NULL then 0
+             when caller_duration is null then callee_duration 
+             when callee_duration is null then caller_duration
+             else caller_duration+callee_duration
+        end as duration
+    from caller full outer join callee
+    on caller.caller=callee.callee
+    order by name asc;
+    
+select * from total_call_duration;
+
+-- Result: List of people who are eligible for the offer with the where clause.
+
+select name 
+    from total_call_duration
+    where duration>=10
+    order by name;
+
+
+-- TASK 3
+
+--Transactions table creation
+
+create or replace table transactions(
+    Amount integer not null,
+    Date date not null
+);
+
+insert into transactions values
+    (1000,'2020-01-06'),
+    (-10,'2020-01-14'),
+    (-75,'2020-01-20'),
+    (-5,'2020-01-25'),
+    (-4,'2020-01-29'),
+    (2000,'2020-03-10'),
+    (-75,'2020-03-12'),
+    (-20,'2020-03-15'),
+    (40,'2020-03-15'),
+    (-50,'2020-03-17'),
+    (200,'2020-10-10'),
+    (-200,'2020-10-10');
+   
+select * from transactions;
+
+--calculating the credit amount and incoming sum for each month using sum() function.
+create or replace table calculations
+as select month(date) as month,
+       sum(
+            case 
+                when amount<0 then amount else 0 
+            end
+          ) as credit_sum,
+       case
+           when credit_sum>-100 or count(-amount)>3 then credit_sum-5 else credit_sum
+       end as final_credit,
+       sum(
+            case
+                when amount>0 then amount else 0
+            end
+          ) as incoming_sum
+    from transactions
+    group by month(date);
+
+select * from calculations;
+
+--Result: Balance amount in the account by adding the total credit,incoming sum after subtracting the credit charge applied for the months with zero transactions.
+select sum(final_credit + incoming_sum)-((12-count(month))*5) as balance from calculations;
+
+
+
+
+
